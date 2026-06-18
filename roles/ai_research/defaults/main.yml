@@ -1,0 +1,9 @@
+---
+# roles/ai_research/defaults/main.yml
+# Default variables for the ai_research role
+
+# Default Ollama models to pull after installation
+ollama_default_models:
+  - llama3.2
+  - codellama
+  - nomic-embed-text

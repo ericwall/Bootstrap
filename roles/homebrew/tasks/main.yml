@@ -1,0 +1,42 @@
+---
+# roles/homebrew/tasks/main.yml
+# Package management via Homebrew on Apple Silicon
+
+- name: Update Homebrew
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/brew update
+  register: brew_update
+  changed_when: "'Already up-to-date' not in brew_update.stdout"
+  failed_when: brew_update.rc != 0
+  tags:
+    - homebrew
+
+- name: Install CLI packages
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    path: /opt/homebrew/bin
+  loop: "{{ homebrew_packages }}"
+  when: homebrew_packages | length > 0
+  tags:
+    - homebrew
+
+- name: Install dev languages
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    path: /opt/homebrew/bin
+  loop: "{{ dev_languages }}"
+  when: dev_languages | length > 0
+  tags:
+    - homebrew
+
+- name: Install cask applications
+  community.general.homebrew_cask:
+    name: "{{ item }}"
+    state: present
+    install_options: appdir=/Applications
+  loop: "{{ homebrew_cask_packages }}"
+  when: homebrew_cask_packages | length > 0
+  tags:
+    - homebrew

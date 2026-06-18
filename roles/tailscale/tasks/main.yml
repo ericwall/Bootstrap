@@ -1,0 +1,32 @@
+---
+# roles/tailscale/tasks/main.yml
+# Tailscale VPN installation (opt-in)
+
+- name: Install Tailscale via Homebrew Cask
+  community.general.homebrew_cask:
+    name: tailscale
+    state: present
+  when: enable_tailscale | default(false)
+  tags:
+    - tailscale
+
+- name: Display Tailscale post-install instructions
+  ansible.builtin.debug:
+    msg: |
+      ============================================================
+      TAILSCALE POST-INSTALL STEPS (manual):
+
+        1. Open Tailscale from Applications or Spotlight.
+
+        2. Complete the login flow via the Tailscale GUI.
+
+        3. Optionally enable Tailscale as an exit node or
+           configure subnet routing in the Tailscale admin console:
+           https://login.tailscale.com/admin/machines
+
+        4. To verify connectivity:
+           /Applications/Tailscale.app/Contents/MacOS/Tailscale status
+      ============================================================
+  when: enable_tailscale | default(false)
+  tags:
+    - tailscale

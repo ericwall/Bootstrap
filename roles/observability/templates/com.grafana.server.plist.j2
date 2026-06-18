@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by Ansible — do not edit manually -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.grafana.server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/grafana</string>
+        <string>server</string>
+        <string>--homepath</string>
+        <string>/opt/homebrew/share/grafana</string>
+        <string>--config</string>
+        <string>/opt/homebrew/etc/grafana/grafana.ini</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>GF_PATHS_PROVISIONING</key>
+        <string>{{ ansible_env.HOME }}/.grafana/provisioning</string>
+        <key>GF_SERVER_HTTP_PORT</key>
+        <string>{{ grafana_port }}</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ ansible_env.HOME }}/.grafana/grafana.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ ansible_env.HOME }}/.grafana/grafana.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,185 @@
+---
+# roles/imessage_relay/tasks/main.yml
+# iMessage relay: BlueBubbles Server installation and configuration
+
+# --- Fetch Latest BlueBubbles Release ---
+
+- name: Get latest BlueBubbles release info from GitHub API
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/BlueBubblesApp/bluebubbles-server/releases/latest
+    method: GET
+    return_content: true
+    headers:
+      Accept: application/vnd.github.v3+json
+  register: bluebubbles_release
+  changed_when: false
+  tags:
+    - imessage_relay
+
+- name: Set BlueBubbles DMG download URL
+  ansible.builtin.set_fact:
+    bluebubbles_dmg_url: >-
+      {{ (bluebubbles_release.json.assets
+          | selectattr('name', 'match', '.*\\.dmg$')
+          | first).browser_download_url }}
+    bluebubbles_dmg_filename: >-
+      {{ (bluebubbles_release.json.assets
+          | selectattr('name', 'match', '.*\\.dmg$')
+          | first).name }}
+    bluebubbles_version: "{{ bluebubbles_release.json.tag_name }}"
+  tags:
+    - imessage_relay
+
+- name: Display BlueBubbles version being installed
+  ansible.builtin.debug:
+    msg: "Installing BlueBubbles Server {{ bluebubbles_version }}"
+  tags:
+    - imessage_relay
+
+# --- Download and Install ---
+
+- name: Check if BlueBubbles Server is already installed
+  ansible.builtin.stat:
+    path: /Applications/BlueBubbles Server.app
+  register: bluebubbles_app_check
+  tags:
+    - imessage_relay
+
+- name: Download BlueBubbles DMG
+  ansible.builtin.get_url:
+    url: "{{ bluebubbles_dmg_url }}"
+    dest: "/tmp/{{ bluebubbles_dmg_filename }}"
+    mode: "0644"
+    force: false
+  when: not bluebubbles_app_check.stat.exists
+  tags:
+    - imessage_relay
+
+- name: Mount BlueBubbles DMG
+  ansible.builtin.command:
+    cmd: hdiutil attach "/tmp/{{ bluebubbles_dmg_filename }}" -nobrowse -quiet
+  register: dmg_mount
+  changed_when: dmg_mount.rc == 0
+  when: not bluebubbles_app_check.stat.exists
+  tags:
+    - imessage_relay
+
+- name: Find mounted BlueBubbles volume
+  ansible.builtin.shell:
+    cmd: ls -d /Volumes/BlueBubbles* 2>/dev/null | head -1
+  register: bluebubbles_volume
+  changed_when: false
+  when: not bluebubbles_app_check.stat.exists
+  tags:
+    - imessage_relay
+
+- name: Copy BlueBubbles Server to Applications
+  ansible.builtin.shell:
+    cmd: cp -R "{{ bluebubbles_volume.stdout }}"/BlueBubbles*.app /Applications/
+    creates: /Applications/BlueBubbles Server.app
+  register: bluebubbles_copy
+  when:
+    - not bluebubbles_app_check.stat.exists
+    - bluebubbles_volume.stdout | length > 0
+  changed_when: bluebubbles_copy.rc == 0
+  tags:
+    - imessage_relay
+
+- name: Unmount BlueBubbles DMG
+  ansible.builtin.shell:
+    cmd: hdiutil detach "{{ bluebubbles_volume.stdout }}" -quiet
+  when:
+    - not bluebubbles_app_check.stat.exists
+    - bluebubbles_volume.stdout is defined
+    - bluebubbles_volume.stdout | length > 0
+  changed_when: true
+  failed_when: false
+  tags:
+    - imessage_relay
+
+- name: Clean up downloaded DMG
+  ansible.builtin.file:
+    path: "/tmp/{{ bluebubbles_dmg_filename }}"
+    state: absent
+  when: not bluebubbles_app_check.stat.exists
+  tags:
+    - imessage_relay
+
+# --- LaunchAgent ---
+
+- name: Create BlueBubbles Server LaunchAgent
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.bluebubbles.server.plist"
+    mode: "0644"
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.bluebubbles.server</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>/usr/bin/open</string>
+              <string>-a</string>
+              <string>BlueBubbles Server</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>StandardOutPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/bluebubbles.log</string>
+          <key>StandardErrorPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/bluebubbles.error.log</string>
+      </dict>
+      </plist>
+  tags:
+    - imessage_relay
+
+- name: Load BlueBubbles Server LaunchAgent
+  ansible.builtin.command:
+    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.bluebubbles.server.plist
+  register: bluebubbles_launchctl
+  changed_when: bluebubbles_launchctl.rc == 0
+  failed_when: false
+  tags:
+    - imessage_relay
+
+# --- Post-Install Instructions ---
+
+- name: Display BlueBubbles post-install instructions
+  ansible.builtin.debug:
+    msg:
+      - "=============================================="
+      - "BlueBubbles Server - Post-Install Setup Required"
+      - "=============================================="
+      - ""
+      - "1. FULL DISK ACCESS (required for iMessage):"
+      - "   System Settings > Privacy & Security > Full Disk Access"
+      - "   Add 'BlueBubbles Server' to the allowed list"
+      - ""
+      - "2. ACCESSIBILITY ACCESS:"
+      - "   System Settings > Privacy & Security > Accessibility"
+      - "   Add 'BlueBubbles Server' to the allowed list"
+      - ""
+      - "3. APPLE ID / iMESSAGE:"
+      - "   Open Messages.app and sign in with your Apple ID"
+      - "   Verify iMessage is active and sending/receiving"
+      - ""
+      - "4. FIREBASE (push notifications):"
+      - "   Create a Firebase project at https://console.firebase.google.com"
+      - "   Download the google-services.json / GoogleService-Info.plist"
+      - "   Add the Firebase server URL and config in BlueBubbles settings"
+      - ""
+      - "5. NETWORK / PROXY:"
+      - "   Configure a server password in BlueBubbles"
+      - "   Set up a proxy for remote access (cloudflared recommended):"
+      - "     brew install cloudflared"
+      - "     cloudflared tunnel create bluebubbles"
+      - "     cloudflared tunnel route dns bluebubbles your-subdomain.example.com"
+      - ""
+      - "6. CLIENTS:"
+      - "   Install BlueBubbles on Android/Web/Windows/Linux"
+      - "   Connect using your server URL and password"
+      - "=============================================="
+  tags:
+    - imessage_relay

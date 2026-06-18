@@ -1,0 +1,22 @@
+# Ansible
+*.retry
+group_vars/vault.yml
+
+# macOS
+.DS_Store
+._*
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Secrets
+*.pem
+*.key
+*.json
+!requirements.yml
+!group_vars/all.yml
+!roles/observability/files/grafana-datasource.yml

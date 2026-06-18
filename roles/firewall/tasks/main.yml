@@ -1,0 +1,112 @@
+---
+# roles/firewall/tasks/main.yml
+# macOS Application Firewall configuration
+
+- name: Check firewall global state
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+  become: true
+  register: fw_global_state
+  changed_when: false
+  check_mode: false
+  tags:
+    - firewall
+
+- name: Enable application firewall
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+  become: true
+  when: "'disabled' in fw_global_state.stdout | lower"
+  changed_when: true
+  tags:
+    - firewall
+
+- name: Check stealth mode state
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode
+  become: true
+  register: fw_stealth_state
+  changed_when: false
+  check_mode: false
+  tags:
+    - firewall
+
+- name: Enable stealth mode
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+  become: true
+  when: "'disabled' in fw_stealth_state.stdout | lower"
+  changed_when: true
+  tags:
+    - firewall
+
+- name: Add sshd to firewall allow list
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/sbin/sshd
+  become: true
+  register: fw_add_sshd
+  changed_when: "'already' not in fw_add_sshd.stdout | lower"
+  failed_when:
+    - fw_add_sshd.rc != 0
+    - "'already' not in fw_add_sshd.stdout | lower"
+  tags:
+    - firewall
+
+- name: Unblock sshd in firewall
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/sbin/sshd
+  become: true
+  register: fw_unblock_sshd
+  changed_when: "'already' not in fw_unblock_sshd.stdout | lower"
+  failed_when:
+    - fw_unblock_sshd.rc != 0
+    - "'already' not in fw_unblock_sshd.stdout | lower"
+  tags:
+    - firewall
+
+- name: Allow signed applications through firewall
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --add {{ item }}
+  become: true
+  loop: "{{ firewall_allowed_apps | default([]) }}"
+  register: fw_add_app
+  changed_when: "'already' not in fw_add_app.stdout | lower"
+  failed_when:
+    - fw_add_app.rc != 0
+    - "'already' not in fw_add_app.stdout | lower"
+  when: firewall_allowed_apps is defined and firewall_allowed_apps | length > 0
+  tags:
+    - firewall
+
+- name: Unblock allowed signed applications
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp {{ item }}
+  become: true
+  loop: "{{ firewall_allowed_apps | default([]) }}"
+  register: fw_unblock_app
+  changed_when: "'already' not in fw_unblock_app.stdout | lower"
+  failed_when:
+    - fw_unblock_app.rc != 0
+    - "'already' not in fw_unblock_app.stdout | lower"
+  when: firewall_allowed_apps is defined and firewall_allowed_apps | length > 0
+  tags:
+    - firewall
+
+- name: Check logging mode state
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --getloggingmode
+  become: true
+  register: fw_logging_state
+  changed_when: false
+  check_mode: false
+  tags:
+    - firewall
+
+- name: Enable firewall logging
+  ansible.builtin.command:
+    cmd: /usr/libexec/ApplicationFirewall/socketfilterfw --setloggingmode on
+  become: true
+  when: "'disabled' in fw_logging_state.stdout | lower"
+  changed_when: true
+  tags:
+    - firewall

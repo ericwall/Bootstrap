@@ -1,0 +1,179 @@
+---
+# roles/ai_research/tasks/main.yml
+# AI research environment: Ollama, Miniforge, PyTorch, MLX, Open WebUI
+
+# --- Ollama ---
+
+- name: Install Ollama
+  community.general.homebrew:
+    name: ollama
+    state: present
+  tags:
+    - ai_research
+
+- name: Create Ollama LaunchAgent
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.ollama.plist"
+    mode: "0644"
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.ollama</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>/opt/homebrew/bin/ollama</string>
+              <string>serve</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <true/>
+          <key>EnvironmentVariables</key>
+          <dict>
+              <key>OLLAMA_HOST</key>
+              <string>0.0.0.0</string>
+          </dict>
+          <key>StandardOutPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/ollama.log</string>
+          <key>StandardErrorPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/ollama.error.log</string>
+      </dict>
+      </plist>
+  tags:
+    - ai_research
+
+- name: Load Ollama LaunchAgent
+  ansible.builtin.command:
+    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.ollama.plist
+  register: ollama_launchctl
+  changed_when: ollama_launchctl.rc == 0
+  failed_when: false
+  tags:
+    - ai_research
+
+- name: Wait for Ollama to be ready
+  ansible.builtin.uri:
+    url: http://localhost:11434/api/tags
+    method: GET
+    return_content: false
+    status_code: 200
+  register: ollama_ready
+  until: ollama_ready.status == 200
+  retries: 30
+  delay: 5
+  tags:
+    - ai_research
+
+- name: Pull default Ollama models
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/ollama pull {{ item }}
+  loop: "{{ ollama_default_models | default(['llama3.2', 'codellama', 'nomic-embed-text']) }}"
+  register: ollama_pull
+  changed_when: "'pulling' in ollama_pull.stderr or 'pulling' in ollama_pull.stdout"
+  async: 3600
+  poll: 30
+  tags:
+    - ai_research
+
+# --- Miniforge + Conda Environment ---
+
+- name: Install Miniforge
+  community.general.homebrew_cask:
+    name: miniforge
+    state: present
+  tags:
+    - ai_research
+
+- name: Check if ai-research conda environment exists
+  ansible.builtin.stat:
+    path: /opt/homebrew/Caskroom/miniforge/base/envs/ai-research
+  register: conda_env_check
+  tags:
+    - ai_research
+
+- name: Create conda environment for AI research
+  ansible.builtin.command:
+    cmd: /opt/homebrew/Caskroom/miniforge/base/bin/conda create -n ai-research python=3.12 -y
+    creates: /opt/homebrew/Caskroom/miniforge/base/envs/ai-research
+  when: not conda_env_check.stat.exists
+  changed_when: true
+  tags:
+    - ai_research
+
+- name: Check if PyTorch is installed in conda env
+  ansible.builtin.command:
+    cmd: /opt/homebrew/Caskroom/miniforge/base/bin/conda run -n ai-research pip show torch
+  register: pytorch_check
+  changed_when: false
+  failed_when: false
+  tags:
+    - ai_research
+
+- name: Install PyTorch in conda environment
+  ansible.builtin.command:
+    cmd: /opt/homebrew/Caskroom/miniforge/base/bin/conda run -n ai-research pip install torch torchvision torchaudio
+    creates: /opt/homebrew/Caskroom/miniforge/base/envs/ai-research/lib/python3.12/site-packages/torch
+  when: pytorch_check.rc != 0
+  changed_when: true
+  async: 1800
+  poll: 30
+  tags:
+    - ai_research
+
+- name: Check if MLX is installed in conda env
+  ansible.builtin.command:
+    cmd: /opt/homebrew/Caskroom/miniforge/base/bin/conda run -n ai-research pip show mlx
+  register: mlx_check
+  changed_when: false
+  failed_when: false
+  tags:
+    - ai_research
+
+- name: Install MLX and MLX-LM in conda environment
+  ansible.builtin.command:
+    cmd: /opt/homebrew/Caskroom/miniforge/base/bin/conda run -n ai-research pip install mlx mlx-lm
+    creates: /opt/homebrew/Caskroom/miniforge/base/envs/ai-research/lib/python3.12/site-packages/mlx
+  when: mlx_check.rc != 0
+  changed_when: true
+  tags:
+    - ai_research
+
+# --- Open WebUI (Docker via Colima) ---
+
+- name: Check if Open WebUI container exists
+  ansible.builtin.command:
+    cmd: docker ps -a --filter name=open-webui --format '{{ '{{' }}.Names{{ '}}' }}'
+  register: openwebui_container_check
+  changed_when: false
+  failed_when: false
+  tags:
+    - ai_research
+
+- name: Run Open WebUI container
+  ansible.builtin.command:
+    cmd: >-
+      docker run -d
+      --name open-webui
+      -p 3001:8080
+      -e OLLAMA_BASE_URL=http://host.docker.internal:11434
+      -v open-webui:/app/backend/data
+      --restart always
+      ghcr.io/open-webui/open-webui:main
+  when: "'open-webui' not in openwebui_container_check.stdout"
+  changed_when: true
+  tags:
+    - ai_research
+
+- name: Display AI research environment summary
+  ansible.builtin.debug:
+    msg:
+      - "AI research environment configured successfully."
+      - "Ollama API: http://localhost:11434"
+      - "Open WebUI: http://localhost:3001"
+      - "Conda environment: conda activate ai-research"
+      - "Models pulled: {{ ollama_default_models | default(['llama3.2', 'codellama', 'nomic-embed-text']) | join(', ') }}"
+  tags:
+    - ai_research

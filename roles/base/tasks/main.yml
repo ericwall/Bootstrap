@@ -1,0 +1,190 @@
+---
+# roles/base/tasks/main.yml
+# System foundation for macOS server
+
+# --- Hostname configuration ---
+
+- name: Get current HostName
+  ansible.builtin.command:
+    cmd: scutil --get HostName
+  register: current_hostname
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - base
+
+- name: Get current LocalHostName
+  ansible.builtin.command:
+    cmd: scutil --get LocalHostName
+  register: current_localhostname
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - base
+
+- name: Get current ComputerName
+  ansible.builtin.command:
+    cmd: scutil --get ComputerName
+  register: current_computername
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - base
+
+- name: Set HostName
+  ansible.builtin.command:
+    cmd: scutil --set HostName {{ hostname }}
+  become: true
+  when: current_hostname.stdout != hostname
+  changed_when: true
+  tags:
+    - base
+
+- name: Set LocalHostName
+  ansible.builtin.command:
+    cmd: scutil --set LocalHostName {{ hostname }}
+  become: true
+  when: current_localhostname.stdout != hostname
+  changed_when: true
+  tags:
+    - base
+
+- name: Set ComputerName
+  ansible.builtin.command:
+    cmd: scutil --set ComputerName {{ computer_name }}
+  become: true
+  when: current_computername.stdout != computer_name
+  changed_when: true
+  tags:
+    - base
+
+# --- Timezone ---
+
+- name: Get current timezone
+  ansible.builtin.command:
+    cmd: systemsetup -gettimezone
+  become: true
+  register: current_timezone
+  changed_when: false
+  check_mode: false
+  tags:
+    - base
+
+- name: Set timezone
+  ansible.builtin.command:
+    cmd: systemsetup -settimezone {{ timezone }}
+  become: true
+  when: "timezone not in current_timezone.stdout"
+  changed_when: true
+  tags:
+    - base
+
+# --- Disable sleep and hibernation ---
+
+- name: Disable system sleep
+  ansible.builtin.command:
+    cmd: pmset -a sleep 0
+  become: true
+  changed_when: false
+  tags:
+    - base
+
+- name: Disable sleep assertion
+  ansible.builtin.command:
+    cmd: pmset -a disablesleep 1
+  become: true
+  changed_when: false
+  tags:
+    - base
+
+- name: Disable display sleep
+  ansible.builtin.command:
+    cmd: pmset -a displaysleep 0
+  become: true
+  changed_when: false
+  tags:
+    - base
+
+- name: Disable hibernation
+  ansible.builtin.command:
+    cmd: pmset -a hibernatemode 0
+  become: true
+  changed_when: false
+  tags:
+    - base
+
+# --- Caffeinate LaunchDaemon ---
+
+- name: Deploy caffeinate LaunchDaemon
+  ansible.builtin.copy:
+    dest: /Library/LaunchDaemons/com.server.caffeinate.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+        <key>Label</key>
+        <string>com.server.caffeinate</string>
+        <key>ProgramArguments</key>
+        <array>
+          <string>/usr/bin/caffeinate</string>
+          <string>-s</string>
+        </array>
+        <key>KeepAlive</key>
+        <true/>
+        <key>RunAtLoad</key>
+        <true/>
+      </dict>
+      </plist>
+  become: true
+  register: caffeinate_plist
+  tags:
+    - base
+
+- name: Load caffeinate LaunchDaemon (on plist change)
+  ansible.builtin.command:
+    cmd: launchctl load -w /Library/LaunchDaemons/com.server.caffeinate.plist
+  become: true
+  when: caffeinate_plist.changed
+  changed_when: true
+  tags:
+    - base
+
+- name: Check if caffeinate LaunchDaemon is loaded
+  ansible.builtin.command:
+    cmd: launchctl list com.server.caffeinate
+  become: true
+  register: caffeinate_loaded
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - base
+
+- name: Ensure caffeinate LaunchDaemon is loaded
+  ansible.builtin.command:
+    cmd: launchctl load -w /Library/LaunchDaemons/com.server.caffeinate.plist
+  become: true
+  when:
+    - not caffeinate_plist.changed
+    - caffeinate_loaded.rc != 0
+  changed_when: true
+  tags:
+    - base
+
+# --- Automatic software updates ---
+
+- name: Enable automatic software update checks
+  ansible.builtin.command:
+    cmd: defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+  become: true
+  changed_when: false
+  tags:
+    - base

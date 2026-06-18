@@ -1,0 +1,69 @@
+---
+# roles/services/tasks/main.yml
+# Installs and configures Nginx as a reverse proxy for all services
+
+# ── Nginx ────────────────────────────────────────────────────────────────────
+
+- name: Install Nginx
+  community.general.homebrew:
+    name: nginx
+    state: present
+  when: nginx_enabled | default(true) | bool
+  tags:
+    - services
+
+- name: Deploy Nginx reverse proxy configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /opt/homebrew/etc/nginx/nginx.conf
+    mode: "0644"
+  register: nginx_config
+  when: nginx_enabled | default(true) | bool
+  tags:
+    - services
+
+- name: Check if Nginx is already running
+  ansible.builtin.command:
+    cmd: brew services list
+  register: brew_services_list
+  changed_when: false
+  when: nginx_enabled | default(true) | bool
+  tags:
+    - services
+
+- name: Start Nginx via brew services
+  ansible.builtin.command:
+    cmd: brew services start nginx
+  register: nginx_start
+  when:
+    - nginx_enabled | default(true) | bool
+    - "'nginx' not in (brew_services_list.stdout | default(''))" or
+      "'started' not in (brew_services_list.stdout | default(''))"
+  changed_when: "'Successfully started' in (nginx_start.stdout | default(''))"
+  tags:
+    - services
+
+- name: Restart Nginx after configuration change
+  ansible.builtin.command:
+    cmd: brew services restart nginx
+  when:
+    - nginx_enabled | default(true) | bool
+    - nginx_config.changed
+  changed_when: true
+  tags:
+    - services
+
+- name: Display services access info
+  ansible.builtin.debug:
+    msg:
+      - "═══════════════════════════════════════════════════"
+      - "  Nginx Reverse Proxy Running"
+      - "═══════════════════════════════════════════════════"
+      - "  Grafana    : http://{{ hostname }}/grafana"
+      - "  Prometheus : http://{{ hostname }}/prometheus"
+      - "  Ollama     : http://{{ hostname }}/ollama"
+      - "  Open WebUI : http://{{ hostname }}/webui"
+      - "═══════════════════════════════════════════════════"
+  when: nginx_enabled | default(true) | bool
+  tags:
+    - services

@@ -1,0 +1,12 @@
+---
+# roles/ssh/handlers/main.yml
+# Handler to restart sshd after config changes
+
+- name: Restart sshd
+  ansible.builtin.shell: |
+    launchctl stop com.openssh.sshd
+    sleep 1
+    launchctl start com.openssh.sshd
+  become: true
+  changed_when: true
+  listen: Restart sshd

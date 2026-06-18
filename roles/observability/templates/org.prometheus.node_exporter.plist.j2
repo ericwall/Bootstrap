@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by Ansible — do not edit manually -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.prometheus.node_exporter</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node_exporter</string>
+        <string>--collector.filesystem.mount-points-exclude=^/(dev|System/Volumes|Volumes/com\.apple)</string>
+        <string>--web.listen-address=:{{ node_exporter_port }}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ ansible_env.HOME }}/.prometheus/node_exporter.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ ansible_env.HOME }}/.prometheus/node_exporter.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,76 @@
+---
+# roles/remote_desktop/tasks/main.yml
+# VNC / Screen Sharing for macOS server
+
+- name: Check if Screen Sharing is enabled
+  ansible.builtin.command:
+    cmd: launchctl list com.apple.screensharing
+  become: true
+  register: screensharing_status
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags:
+    - remote_desktop
+
+- name: Enable Screen Sharing via launchctl
+  ansible.builtin.command:
+    cmd: launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+  become: true
+  when: screensharing_status.rc != 0
+  changed_when: true
+  failed_when: false
+  tags:
+    - remote_desktop
+
+- name: Activate Apple Remote Desktop agent with full privileges
+  ansible.builtin.command:
+    cmd: >-
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart
+      -activate
+      -configure -access -on
+      -restart -agent
+      -privs -all
+  become: true
+  register: ard_kickstart
+  changed_when: "'Activated' in ard_kickstart.stdout or 'Done' in ard_kickstart.stdout"
+  failed_when:
+    - ard_kickstart.rc != 0
+    - "'already activated' not in ard_kickstart.stderr | default('')"
+  tags:
+    - remote_desktop
+
+- name: Configure ARD for all local users
+  ansible.builtin.command:
+    cmd: >-
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart
+      -configure -allowAccessFor -allUsers
+      -privs -all
+  become: true
+  register: ard_users
+  changed_when: "'Done' in ard_users.stdout"
+  tags:
+    - remote_desktop
+
+- name: Set VNC password
+  ansible.builtin.shell:
+    cmd: |
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+        -configure -clientopts -setvnclegacy -vnclegacy yes \
+        -setvncpw -vncpw "{{ vnc_password }}"
+  become: true
+  register: vnc_pw_result
+  changed_when: "'Done' in vnc_pw_result.stdout"
+  no_log: true
+  tags:
+    - remote_desktop
+
+- name: Restart ARD agent to apply changes
+  ansible.builtin.command:
+    cmd: >-
+      /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart
+      -restart -agent
+  become: true
+  changed_when: true
+  tags:
+    - remote_desktop

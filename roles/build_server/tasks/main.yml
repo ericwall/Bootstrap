@@ -1,0 +1,218 @@
+---
+# roles/build_server/tasks/main.yml
+# Build server environment: Xcode CLI, Colima + Docker, build tools, Forgejo Runner
+
+# --- Xcode Command Line Tools ---
+
+- name: Check if Xcode Command Line Tools are installed
+  ansible.builtin.command:
+    cmd: xcode-select -p
+  register: xcode_check
+  changed_when: false
+  failed_when: false
+  tags:
+    - build_server
+
+- name: Install Xcode Command Line Tools
+  ansible.builtin.command:
+    cmd: xcode-select --install
+  when: xcode_check.rc != 0
+  changed_when: true
+  tags:
+    - build_server
+
+- name: Wait for Xcode Command Line Tools installation to complete
+  ansible.builtin.command:
+    cmd: xcode-select -p
+  register: xcode_wait
+  until: xcode_wait.rc == 0
+  retries: 60
+  delay: 10
+  changed_when: false
+  when: xcode_check.rc != 0
+  tags:
+    - build_server
+
+# --- Container Runtime (Colima + Docker) ---
+
+- name: Install Colima
+  community.general.homebrew:
+    name: colima
+    state: present
+  tags:
+    - build_server
+
+- name: Install Docker CLI
+  community.general.homebrew:
+    name: docker
+    state: present
+  tags:
+    - build_server
+
+- name: Install docker-compose
+  community.general.homebrew:
+    name: docker-compose
+    state: present
+  tags:
+    - build_server
+
+- name: Install docker-credential-helper
+  community.general.homebrew:
+    name: docker-credential-helper
+    state: present
+  tags:
+    - build_server
+
+# --- Build Tools ---
+
+- name: Install build tools via Homebrew
+  community.general.homebrew:
+    name:
+      - cmake
+      - make
+      - ninja
+      - autoconf
+      - automake
+      - pkg-config
+    state: present
+  tags:
+    - build_server
+
+# --- Start Colima ---
+
+- name: Check if Colima is already running
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/colima status
+  register: colima_status
+  changed_when: false
+  failed_when: false
+  tags:
+    - build_server
+
+- name: Start Colima with Apple Silicon defaults
+  ansible.builtin.command:
+    cmd: >-
+      /opt/homebrew/bin/colima start
+      --arch aarch64
+      --vm-type vz
+      --vz-rosetta
+      --cpu 4
+      --memory 8
+  when: colima_status.rc != 0
+  changed_when: true
+  tags:
+    - build_server
+
+# --- Colima LaunchAgent ---
+
+- name: Create Colima LaunchAgent
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.colima.plist"
+    mode: "0644"
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.colima</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>/opt/homebrew/bin/colima</string>
+              <string>start</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <dict>
+              <key>SuccessfulExit</key>
+              <false/>
+          </dict>
+          <key>StandardOutPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/colima.log</string>
+          <key>StandardErrorPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/colima.error.log</string>
+      </dict>
+      </plist>
+  tags:
+    - build_server
+
+- name: Load Colima LaunchAgent
+  ansible.builtin.command:
+    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.colima.plist
+  register: colima_launchctl
+  changed_when: colima_launchctl.rc == 0
+  failed_when: false
+  tags:
+    - build_server
+
+# --- Forgejo Runner ---
+
+- name: Download Forgejo Runner binary for darwin-arm64
+  ansible.builtin.get_url:
+    url: "{{ forgejo_runner_url | default('https://code.forgejo.org/forgejo/runner/releases/download/v6.3.1/forgejo-runner-6.3.1-darwin-arm64') }}"
+    dest: /usr/local/bin/forgejo-runner
+    mode: "0755"
+    force: false
+  become: true
+  tags:
+    - build_server
+
+- name: Ensure forgejo-runner working directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.forgejo-runner"
+    state: directory
+    mode: "0755"
+  tags:
+    - build_server
+
+- name: Display Forgejo Runner registration instructions
+  ansible.builtin.debug:
+    msg: >-
+      Forgejo Runner installed. You must manually register it by running:
+        forgejo-runner register
+          --instance {{ forgejo_instance_url | default('https://your-forgejo-instance.example.com') }}
+          --token <YOUR_REGISTRATION_TOKEN>
+          --labels '{{ forgejo_runner_labels | default('docker:docker://node:20-bookworm,ubuntu-latest:docker://ubuntu:22.04') }}'
+  tags:
+    - build_server
+
+- name: Create Forgejo Runner LaunchAgent
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/org.forgejo.runner.plist"
+    mode: "0644"
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>org.forgejo.runner</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>/usr/local/bin/forgejo-runner</string>
+              <string>daemon</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <true/>
+          <key>WorkingDirectory</key>
+          <string>{{ ansible_env.HOME }}/.forgejo-runner</string>
+          <key>StandardOutPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/forgejo-runner.log</string>
+          <key>StandardErrorPath</key>
+          <string>{{ ansible_env.HOME }}/Library/Logs/forgejo-runner.error.log</string>
+      </dict>
+      </plist>
+  tags:
+    - build_server
+
+- name: Load Forgejo Runner LaunchAgent
+  ansible.builtin.command:
+    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/org.forgejo.runner.plist
+  register: forgejo_launchctl
+  changed_when: forgejo_launchctl.rc == 0
+  failed_when: false
+  tags:
+    - build_server

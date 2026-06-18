@@ -1,0 +1,73 @@
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Mac M1 Server — Main Playbook
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   ansible-playbook playbook.yml              # full run
+#   ansible-playbook playbook.yml --tags base  # single role
+#   ansible-playbook playbook.yml --check      # dry-run
+# ─────────────────────────────────────────────────────────────────────────────
+- name: Provision macOS Apple Silicon server
+  hosts: localhost
+  connection: local
+
+  pre_tasks:
+    - name: Verify running on macOS
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "Darwin"
+        fail_msg: "This playbook only supports macOS."
+        success_msg: "Running on macOS — proceeding."
+      tags: always
+
+    - name: Verify Apple Silicon architecture
+      ansible.builtin.debug:
+        msg: >-
+          Architecture: {{ ansible_architecture }}.
+          {% if ansible_architecture != 'arm64' %}
+          WARNING — this playbook is designed for Apple Silicon (arm64).
+          {% endif %}
+      tags: always
+
+  roles:
+    # ── Foundation ───────────────────────────────────────────────────────────
+    - role: base
+      tags: [base]
+
+    - role: homebrew
+      tags: [homebrew]
+
+    # ── Security & Access ────────────────────────────────────────────────────
+    - role: ssh
+      tags: [ssh]
+
+    - role: firewall
+      tags: [firewall]
+
+    - role: remote_desktop
+      tags: [remote_desktop]
+
+    # ── Networking ───────────────────────────────────────────────────────────
+    - role: cloudflared
+      tags: [cloudflared]
+
+    - role: tailscale
+      when: enable_tailscale | bool
+      tags: [tailscale]
+
+    # ── Workloads ────────────────────────────────────────────────────────────
+    - role: build_server
+      tags: [build_server]
+
+    - role: ai_research
+      tags: [ai_research]
+
+    - role: imessage_relay
+      tags: [imessage_relay]
+
+    # ── Operations ───────────────────────────────────────────────────────────
+    - role: observability
+      tags: [observability]
+
+    - role: services
+      tags: [services]

@@ -1,0 +1,6 @@
+---
+# roles/imessage_relay/defaults/main.yml
+# Default variables for the imessage_relay role
+
+# No configurable defaults required — the role fetches the latest
+# BlueBubbles release dynamically from the GitHub API.

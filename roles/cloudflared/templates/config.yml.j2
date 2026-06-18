@@ -1,0 +1,9 @@
+tunnel: {{ cloudflared_tunnel_name }}
+credentials-file: {{ ansible_env.HOME }}/.cloudflared/{{ cloudflared_tunnel_name }}.json
+
+ingress:
+  - hostname: {{ hostname }}
+    service: http://localhost:80
+  - hostname: grafana.{{ hostname }}
+    service: http://localhost:{{ grafana_port }}
+  - service: http_status:404

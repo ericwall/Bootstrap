@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by Ansible — do not edit manually -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.prometheus.prometheus</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/prometheus</string>
+        <string>--config.file={{ ansible_env.HOME }}/.prometheus/prometheus.yml</string>
+        <string>--storage.tsdb.path={{ ansible_env.HOME }}/.prometheus/data</string>
+        <string>--web.listen-address=:{{ prometheus_port }}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>{{ ansible_env.HOME }}/.prometheus/prometheus.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ ansible_env.HOME }}/.prometheus/prometheus.err.log</string>
+</dict>
+</plist>

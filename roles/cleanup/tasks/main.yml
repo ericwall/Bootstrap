@@ -1,0 +1,31 @@
+---
+# roles/cleanup/tasks/main.yml
+
+- name: Remove user-writable default applications
+  become: true
+  ansible.builtin.file:
+    path: "/Applications/{{ item }}"
+    state: absent
+  loop:
+    - "GarageBand.app"
+    - "iMovie.app"
+    - "Keynote.app"
+    - "Numbers.app"
+    - "Pages.app"
+  tags: [cleanup, cleanup_remove]
+
+- name: Hide unremovable System applications from the GUI
+  become: true
+  ansible.builtin.command: "chflags hidden /System/Applications/{{ item }}"
+  register: chflags_result
+  # This safely checks if the app exists before trying to hide it
+  failed_when: >
+    chflags_result.rc != 0 and 
+    "No such file or directory" not in chflags_result.stderr
+  changed_when: false
+  loop:
+    - "Chess.app"
+    - "Stocks.app"
+    - "News.app"
+    - "Home.app"
+  tags: [cleanup, cleanup_hide]

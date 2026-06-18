@@ -37,6 +37,9 @@
     - role: homebrew
       tags: [homebrew]
 
+    - role: cleanup
+      tags: [cleanup]
+
     # ── Security & Access ────────────────────────────────────────────────────
     - role: ssh
       tags: [ssh]

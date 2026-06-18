@@ -33,6 +33,7 @@ homebrew_packages:
   - watch
   - gnu-sed
   - coreutils
+  - nginx
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Homebrew — Cask (GUI) packages

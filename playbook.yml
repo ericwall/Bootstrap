@@ -12,6 +12,18 @@
   connection: local
 
   pre_tasks:
+    - name: Check if vault file exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/group_vars/vault.yml"
+      register: vault_file_stat
+      tags: always
+
+    - name: Load vault variables
+      ansible.builtin.include_vars:
+        file: group_vars/vault.yml
+      when: vault_file_stat.stat.exists
+      tags: always
+
     - name: Verify running on macOS
       ansible.builtin.assert:
         that:

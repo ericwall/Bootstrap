@@ -42,7 +42,6 @@ homebrew_packages:
 # Homebrew — Cask (GUI) packages
 # ─────────────────────────────────────────────────────────────────────────────
 homebrew_cask_packages:
-  - temurin
   - android-commandlinetools
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -53,6 +52,7 @@ dev_languages:
   - node
   - go
   - rust
+  - openjdk
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Networking — Tailscale

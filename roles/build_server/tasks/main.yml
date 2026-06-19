@@ -148,6 +148,16 @@
 
 # --- Kotlin Multiplatform (KMP) Build Environment ---
 
+- name: Symlink OpenJDK to system JavaVirtualMachines
+  ansible.builtin.file:
+    src: "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk"
+    dest: "/Library/Java/JavaVirtualMachines/openjdk.jdk"
+    state: link
+  become: true
+  tags:
+    - build_server
+    - kmp
+
 - name: Get Java Home Path
   ansible.builtin.command:
     cmd: /usr/libexec/java_home

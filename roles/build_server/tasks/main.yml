@@ -215,6 +215,15 @@
 
 # --- Forgejo Runner ---
 
+- name: Ensure /usr/local/bin exists
+  ansible.builtin.file:
+    path: /usr/local/bin
+    state: directory
+    mode: "0755"
+  become: true
+  tags:
+    - build_server
+
 - name: Download Forgejo/Gitea Runner binary for darwin-arm64
   ansible.builtin.get_url:
     url: "{{ forgejo_runner_url | default('https://dl.gitea.com/gitea-runner/1.0.8/gitea-runner-1.0.8-darwin-arm64') }}"

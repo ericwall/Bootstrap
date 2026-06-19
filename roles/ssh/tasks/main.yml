@@ -14,7 +14,7 @@
 
 - name: Enable Remote Login (SSH)
   ansible.builtin.command:
-    cmd: systemsetup -setremotelogin on
+    cmd: launchctl load -w /System/Library/LaunchDaemons/ssh.plist
   become: true
   when: "'On' not in remote_login_status.stdout"
   changed_when: true

@@ -12,7 +12,7 @@
 
 - name: Create cloudflared config directory
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/.cloudflared"
+    path: "{{ ansible_facts.env.HOME }}/.cloudflared"
     state: directory
     mode: "0700"
   when: enable_cloudflared | default(false)
@@ -22,7 +22,7 @@
 - name: Deploy cloudflared config file
   ansible.builtin.template:
     src: config.yml.j2
-    dest: "{{ ansible_env.HOME }}/.cloudflared/config.yml"
+    dest: "{{ ansible_facts.env.HOME }}/.cloudflared/config.yml"
     mode: "0600"
   when: enable_cloudflared | default(false)
   tags:
@@ -31,7 +31,7 @@
 - name: Deploy cloudflared LaunchAgent plist
   ansible.builtin.template:
     src: com.cloudflare.cloudflared.plist.j2
-    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.cloudflare.cloudflared.plist"
+    dest: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.cloudflare.cloudflared.plist"
     mode: "0644"
   when: enable_cloudflared | default(false)
   tags:
@@ -39,7 +39,7 @@
 
 - name: Load cloudflared LaunchAgent
   ansible.builtin.command:
-    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.cloudflare.cloudflared.plist
+    cmd: launchctl load {{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.cloudflare.cloudflared.plist
   register: cloudflared_launchctl_result
   changed_when: cloudflared_launchctl_result.rc == 0
   failed_when: false

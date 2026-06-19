@@ -188,3 +188,11 @@
   changed_when: false
   tags:
     - base
+
+- name: Ensure user LaunchAgents directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: "0755"
+  tags:
+    - base

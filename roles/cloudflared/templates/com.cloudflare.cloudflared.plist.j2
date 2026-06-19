@@ -10,7 +10,7 @@
         <string>/opt/homebrew/bin/cloudflared</string>
         <string>tunnel</string>
         <string>--config</string>
-        <string>{{ ansible_env.HOME }}/.cloudflared/config.yml</string>
+        <string>{{ ansible_facts.env.HOME }}/.cloudflared/config.yml</string>
         <string>run</string>
     </array>
 

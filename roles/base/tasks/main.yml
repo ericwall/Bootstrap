@@ -45,9 +45,9 @@
 
 - name: Set LocalHostName
   ansible.builtin.command:
-    cmd: scutil --set LocalHostName {{ hostname }}
+    cmd: scutil --set LocalHostName {{ local_hostname | default(hostname.split('.')[0]) }}
   become: true
-  when: current_localhostname.stdout != hostname
+  when: current_localhostname.stdout != (local_hostname | default(hostname.split('.')[0]))
   changed_when: true
   tags:
     - base

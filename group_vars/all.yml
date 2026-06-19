@@ -4,6 +4,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 hostname: m1max.ericwall.me
 computer_name: m1max
+local_hostname: m1max
 timezone: America/Chicago
 admin_user: ericwall
 

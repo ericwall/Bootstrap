@@ -13,20 +13,27 @@
       Accept: application/vnd.github.v3+json
   register: bluebubbles_release
   changed_when: false
+  check_mode: false
   tags:
     - imessage_relay
 
 - name: Set BlueBubbles DMG download URL
+  vars:
+    dmg_assets: "{{ bluebubbles_release.json.assets | default([]) | selectattr('name', 'search', '\\.dmg$') | list }}"
+    arm64_assets: "{{ dmg_assets | selectattr('name', 'search', 'arm64') | list }}"
+    selected_asset: "{{ (ansible_facts.architecture == 'arm64' and arm64_assets | length > 0) | ternary(arm64_assets | first, dmg_assets | first | default(none)) }}"
   ansible.builtin.set_fact:
-    bluebubbles_dmg_url: >-
-      {{ (bluebubbles_release.json.assets
-          | selectattr('name', 'match', '.*\\.dmg$')
-          | first).browser_download_url }}
-    bluebubbles_dmg_filename: >-
-      {{ (bluebubbles_release.json.assets
-          | selectattr('name', 'match', '.*\\.dmg$')
-          | first).name }}
-    bluebubbles_version: "{{ bluebubbles_release.json.tag_name }}"
+    bluebubbles_dmg_url: "{{ selected_asset.browser_download_url if selected_asset else none }}"
+    bluebubbles_dmg_filename: "{{ selected_asset.name if selected_asset else none }}"
+    bluebubbles_version: "{{ bluebubbles_release.json.tag_name | default('unknown') }}"
+  tags:
+    - imessage_relay
+
+- name: Assert BlueBubbles DMG was found
+  ansible.builtin.assert:
+    that:
+      - bluebubbles_dmg_url is not none
+    fail_msg: "Could not find a valid BlueBubbles DMG download URL in the latest release assets."
   tags:
     - imessage_relay
 
@@ -109,7 +116,7 @@
 
 - name: Create BlueBubbles Server LaunchAgent
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.bluebubbles.server.plist"
+    dest: "{{ lookup('env', 'HOME') }}/Library/LaunchAgents/com.bluebubbles.server.plist"
     mode: "0644"
     content: |
       <?xml version="1.0" encoding="UTF-8"?>
@@ -127,9 +134,9 @@
           <key>RunAtLoad</key>
           <true/>
           <key>StandardOutPath</key>
-          <string>{{ ansible_env.HOME }}/Library/Logs/bluebubbles.log</string>
+          <string>{{ lookup('env', 'HOME') }}/Library/Logs/bluebubbles.log</string>
           <key>StandardErrorPath</key>
-          <string>{{ ansible_env.HOME }}/Library/Logs/bluebubbles.error.log</string>
+          <string>{{ lookup('env', 'HOME') }}/Library/Logs/bluebubbles.error.log</string>
       </dict>
       </plist>
   tags:
@@ -137,7 +144,7 @@
 
 - name: Load BlueBubbles Server LaunchAgent
   ansible.builtin.command:
-    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.bluebubbles.server.plist
+    cmd: launchctl load {{ lookup('env', 'HOME') }}/Library/LaunchAgents/com.bluebubbles.server.plist
   register: bluebubbles_launchctl
   changed_when: bluebubbles_launchctl.rc == 0
   failed_when: false

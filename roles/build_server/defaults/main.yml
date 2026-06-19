@@ -3,7 +3,7 @@
 # Default variables for the build_server role
 
 # Forgejo Runner binary download URL (darwin-arm64)
-forgejo_runner_url: "https://code.forgejo.org/forgejo/runner/releases/download/v6.3.1/forgejo-runner-6.3.1-darwin-arm64"
+forgejo_runner_url: "https://dl.gitea.com/gitea-runner/1.0.8/gitea-runner-1.0.8-darwin-arm64"
 
 # Forgejo instance URL for runner registration
 forgejo_instance_url: "https://your-forgejo-instance.example.com"

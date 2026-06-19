@@ -168,6 +168,13 @@
     - build_server
     - kmp
 
+- name: Display resolved Java Home
+  ansible.builtin.debug:
+    msg: "Resolved JAVA_HOME: {{ java_home_result.stdout }}"
+  tags:
+    - build_server
+    - kmp
+
 - name: Configure environment variables in zprofile
   ansible.builtin.blockinfile:
     path: "{{ ansible_env.HOME }}/.zprofile"

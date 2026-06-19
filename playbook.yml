@@ -15,7 +15,7 @@
     - name: Verify running on macOS
       ansible.builtin.assert:
         that:
-          - ansible_os_family == "Darwin"
+          - ansible_facts.os_family == "Darwin"
         fail_msg: "This playbook only supports macOS."
         success_msg: "Running on macOS — proceeding."
       tags: always
@@ -23,8 +23,8 @@
     - name: Verify Apple Silicon architecture
       ansible.builtin.debug:
         msg: >-
-          Architecture: {{ ansible_architecture }}.
-          {% if ansible_architecture != 'arm64' %}
+          Architecture: {{ ansible_facts.architecture }}.
+          {% if ansible_facts.architecture != 'arm64' %}
           WARNING — this playbook is designed for Apple Silicon (arm64).
           {% endif %}
       tags: always

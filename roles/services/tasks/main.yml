@@ -37,8 +37,7 @@
   register: nginx_start
   when:
     - nginx_enabled | default(true) | bool
-    - '"nginx" not in (brew_services_list.stdout | default(""))' or
-      '"started" not in (brew_services_list.stdout | default(""))'
+    - '"nginx" not in (brew_services_list.stdout | default("")) or "started" not in (brew_services_list.stdout | default(""))'
   changed_when: "'Successfully started' in (nginx_start.stdout | default(''))"
   tags:
     - services

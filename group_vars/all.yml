@@ -75,8 +75,7 @@ forgejo_runner_labels: "macos-arm64:host"
 # AI Research — Ollama
 # ─────────────────────────────────────────────────────────────────────────────
 ollama_default_models:
-  - llama3.2
-  - codellama
+  - gemma4:12b
   - nomic-embed-text
 
 # ─────────────────────────────────────────────────────────────────────────────

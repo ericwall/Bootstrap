@@ -35,11 +35,15 @@ homebrew_packages:
   - gnu-sed
   - coreutils
   - nginx
+  - cocoapods
+  - kdoctor
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Homebrew — Cask (GUI) packages
 # ─────────────────────────────────────────────────────────────────────────────
-homebrew_cask_packages: []
+homebrew_cask_packages:
+  - temurin
+  - android-commandlinetools
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development languages / runtimes

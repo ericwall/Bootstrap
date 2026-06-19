@@ -36,6 +36,7 @@
     name: "{{ item }}"
     state: present
     install_options: appdir=/Applications
+    sudo_password: "{{ ansible_become_password | default(omit) }}"
   loop: "{{ homebrew_cask_packages }}"
   when: homebrew_cask_packages | length > 0
   tags:

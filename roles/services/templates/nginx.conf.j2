@@ -35,6 +35,18 @@ http {
         server 127.0.0.1:3001;
     }
 
+    upstream forgejo {
+        server 127.0.0.1:{{ forgejo_port }};
+    }
+
+    upstream immich {
+        server 127.0.0.1:{{ immich_port }};
+    }
+
+    upstream jellyfin {
+        server 127.0.0.1:{{ jellyfin_port }};
+    }
+
     server {
         listen       80;
         server_name  {{ hostname }};
@@ -81,10 +93,38 @@ http {
             proxy_read_timeout 86400;
         }
 
+        # ── Forgejo ──────────────────────────────────────
+        location /forgejo/ {
+            proxy_pass http://forgejo/;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # ── Immich ───────────────────────────────────────
+        location /immich/ {
+            proxy_pass http://immich/;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # ── Jellyfin ─────────────────────────────────────
+        location /jellyfin/ {
+            proxy_pass http://jellyfin/;
+            proxy_set_header Host              $host;
+            proxy_set_header X-Real-IP         $remote_addr;
+            proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         # ── Default ─────────────────────────────────────
         location / {
             return 200 '{"status":"ok","server":"{{ hostname }}"}';
             add_header Content-Type application/json;
         }
     }
+
 }

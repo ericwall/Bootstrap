@@ -80,9 +80,19 @@
     - role: imessage_relay
       tags: [imessage_relay]
 
+    - role: forgejo
+      tags: [forgejo]
+
+    - role: immich
+      tags: [immich]
+
+    - role: jellyfin
+      tags: [jellyfin]
+
     # ── Operations ───────────────────────────────────────────────────────────
     - role: observability
       tags: [observability]
 
     - role: services
       tags: [services]
+

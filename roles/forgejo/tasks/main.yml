@@ -1,0 +1,39 @@
+---
+# roles/forgejo/tasks/main.yml
+# Installs and configures Forgejo (Git server) in Docker via Colima
+
+- name: Ensure Forgejo directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.forgejo"
+    state: directory
+    mode: "0755"
+  tags:
+    - forgejo
+
+- name: Deploy Forgejo docker-compose configuration
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ansible_env.HOME }}/.forgejo/docker-compose.yml"
+    mode: "0644"
+  register: forgejo_compose_config
+  tags:
+    - forgejo
+
+- name: Start Forgejo container
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/docker-compose up -d
+    chdir: "{{ ansible_env.HOME }}/.forgejo"
+  when: forgejo_compose_config.changed
+  changed_when: true
+  tags:
+    - forgejo
+
+- name: Ensure Forgejo is started (if config not changed)
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/docker-compose up -d
+    chdir: "{{ ansible_env.HOME }}/.forgejo"
+  register: forgejo_start
+  changed_when: "'Started' in forgejo_start.stdout or 'Created' in forgejo_start.stdout or 'Recreated' in forgejo_start.stdout"
+  when: not forgejo_compose_config.changed
+  tags:
+    - forgejo

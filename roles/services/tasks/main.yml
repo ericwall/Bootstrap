@@ -12,6 +12,15 @@
   tags:
     - services
 
+- name: Ensure Nginx log directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.nginx"
+    state: directory
+    mode: "0755"
+  when: nginx_enabled | default(true) | bool
+  tags:
+    - services
+
 - name: Deploy Nginx reverse proxy configuration
   ansible.builtin.template:
     src: nginx.conf.j2

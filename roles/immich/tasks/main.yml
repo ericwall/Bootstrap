@@ -1,0 +1,52 @@
+---
+# roles/immich/tasks/main.yml
+# Installs and configures Immich (Photo/Video Server) in Docker via Colima
+
+- name: Ensure Immich directory exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ ansible_env.HOME }}/.immich"
+    - "{{ ansible_env.HOME }}/.immich/library"
+    - "{{ ansible_env.HOME }}/.immich/postgres"
+  tags:
+    - immich
+
+- name: Deploy Immich env configuration
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/.immich/.env"
+    mode: "0600"
+  register: immich_env_config
+  tags:
+    - immich
+
+- name: Deploy Immich docker-compose configuration
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ansible_env.HOME }}/.immich/docker-compose.yml"
+    mode: "0644"
+  register: immich_compose_config
+  tags:
+    - immich
+
+- name: Start Immich container stack
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/docker-compose up -d
+    chdir: "{{ ansible_env.HOME }}/.immich"
+  when: immich_env_config.changed or immich_compose_config.changed
+  changed_when: true
+  tags:
+    - immich
+
+- name: Ensure Immich container stack is started (if config not changed)
+  ansible.builtin.command:
+    cmd: /opt/homebrew/bin/docker-compose up -d
+    chdir: "{{ ansible_env.HOME }}/.immich"
+  register: immich_start
+  changed_when: "'Started' in immich_start.stdout or 'Created' in immich_start.stdout or 'Recreated' in immich_start.stdout"
+  when: not (immich_env_config.changed or immich_compose_config.changed)
+  tags:
+    - immich

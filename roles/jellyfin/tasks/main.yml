@@ -1,0 +1,40 @@
+---
+# roles/jellyfin/tasks/main.yml
+# Installs and configures native Jellyfin on macOS for GPU transcoding support
+
+- name: Install Jellyfin via Homebrew Cask
+  community.general.homebrew_cask:
+    name: jellyfin
+    state: present
+  tags:
+    - jellyfin
+
+- name: Deploy Jellyfin LaunchAgent configuration
+  ansible.builtin.template:
+    src: com.jellyfin.server.plist.j2
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/com.jellyfin.server.plist"
+    mode: "0644"
+  register: jellyfin_plist
+  tags:
+    - jellyfin
+
+- name: Unload Jellyfin LaunchAgent before reload (if changed)
+  ansible.builtin.command:
+    cmd: launchctl unload {{ ansible_env.HOME }}/Library/LaunchAgents/com.jellyfin.server.plist
+  when: jellyfin_plist.changed
+  changed_when: true
+  failed_when: false
+  tags:
+    - jellyfin
+
+- name: Load Jellyfin LaunchAgent
+  ansible.builtin.command:
+    cmd: launchctl load {{ ansible_env.HOME }}/Library/LaunchAgents/com.jellyfin.server.plist
+  register: jellyfin_load
+  changed_when: jellyfin_plist.changed
+  failed_when:
+    - jellyfin_load.rc != 0
+    - "'already loaded' not in (jellyfin_load.stderr | default(''))"
+    - "'service already loaded' not in (jellyfin_load.stderr | default(''))"
+  tags:
+    - jellyfin

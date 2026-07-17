@@ -102,6 +102,7 @@ nginx_enabled: true
 # Forgejo Server
 # ─────────────────────────────────────────────────────────────────────────────
 forgejo_port: 3002
+forgejo_data_location: "/Volumes/Forgejo"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Immich Server

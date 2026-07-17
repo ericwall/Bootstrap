@@ -9,7 +9,7 @@ services:
       - USER_UID=1000
       - USER_GID=1000
     volumes:
-      - ./data:/data
+      - "{{ forgejo_data_location }}:/data"
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "{{ forgejo_port }}:3000"

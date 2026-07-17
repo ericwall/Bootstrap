@@ -9,7 +9,10 @@ services:
       - USER_UID=1000
       - USER_GID=1000
     volumes:
-      - "{{ forgejo_data_location }}:/data"
+      - "{{ forgejo_data_location }}/git:/data/git"
+      - "{{ forgejo_data_location }}/gitea:/data/gitea"
+      - "{{ forgejo_data_location }}/ssh:/data/ssh"
+      - "{{ ansible_env.HOME }}/.forgejo/db:/data/db"
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "{{ forgejo_port }}:3000"

@@ -10,6 +10,14 @@
   tags:
     - forgejo
 
+- name: Ensure Forgejo local database directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.forgejo/db"
+    state: directory
+    mode: "0755"
+  tags:
+    - forgejo
+
 - name: Deploy Forgejo docker-compose configuration
   ansible.builtin.template:
     src: docker-compose.yml.j2

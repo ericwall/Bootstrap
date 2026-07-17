@@ -1,0 +1,12 @@
+#!/bin/bash
+# {{ ansible_managed }}
+
+DB_PATH="{{ ansible_env.HOME }}/.forgejo/db/gitea.db"
+BACKUP_DIR="{{ forgejo_data_location }}"
+
+if [ -f "$DB_PATH" ] && [ -d "$BACKUP_DIR" ]; then
+    cp "$DB_PATH" "$BACKUP_DIR/gitea.db.bak"
+    echo "$(date): SQLite database backup completed successfully."
+else
+    echo "$(date): Backup failed. Database file or NAS mount not found."
+fi

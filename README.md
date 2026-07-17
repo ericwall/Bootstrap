@@ -306,6 +306,46 @@ ollama pull codellama
 
 The `systemsetup` commands require `sudo`. Ensure you passed `--ask-become-pass` or have passwordless `sudo` configured.
 
+### Colima / Docker: Accessing NAS or external mounts (`/Volumes`)
+
+If you are running Docker containers (like Forgejo or Immich) that map volumes to network shares or external drives mounted under `/Volumes/`, you must configure Colima to mount the `/Volumes` directory from your macOS host.
+
+To enable this:
+1. Stop active containers:
+   ```bash
+   docker-compose down
+   ```
+2. Edit your Colima configuration file (`~/.colima/default/colima.yaml`) and add `/Volumes` to the `mounts` section:
+   ```yaml
+   mounts:
+     - location: /Volumes
+       writable: true
+   ```
+3. Restart Colima to apply:
+   ```bash
+   colima restart
+   ```
+
+### Forgejo / Gitea: "Unable to open database file"
+
+If you restore or manually copy the SQLite database file (`gitea.db`) from a backup or NAS, the file may carry restrictive permissions (e.g., `chmod 700` or owned by your macOS host user).
+
+Inside the container, Forgejo runs as a non-root user (`git` with UID `1000`). If it cannot read or write to the database file or the directory it resides in, it will fail to start and throw `unable to open database file: no such file or directory` in the logs.
+
+To resolve this:
+1. Ensure the directory `~/.forgejo/db` exists and has open permissions:
+   ```bash
+   chmod 777 ~/.forgejo/db
+   ```
+2. Grant read/write permissions to the database file:
+   ```bash
+   chmod 666 ~/.forgejo/db/gitea.db
+   ```
+3. Restart the container:
+   ```bash
+   docker-compose -f ~/.forgejo/docker-compose.yml restart
+   ```
+
 ### Re-running is safe
 
 All tasks are idempotent. Re-running the playbook will only change what has drifted from the desired state. Use `--check --diff` to preview changes before applying.

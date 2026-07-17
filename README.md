@@ -39,21 +39,18 @@ This project turns a fresh Mac into a hardened, observable server running:
 
 ## Quick Start
 
-### 1. Clone the repository
+### 1. Run the One-Liner Remote Installer
+To prepare a fresh macOS install, run the following command. It will check/install Xcode Command Line Tools, clone the repository to `~/Bootstrap`, and bootstrap Homebrew, Ansible, and required Galaxy collections:
 
 ```bash
-git clone <repo-url> ~/mac-server-ansible
-cd ~/mac-server-ansible
+curl -fsSL https://raw.githubusercontent.com/ericwall/Bootstrap/main/install.sh | bash
 ```
 
-### 2. Run the bootstrap script
+### 2. Navigate to the installation directory
 
 ```bash
-chmod +x bootstrap.sh
-./bootstrap.sh
+cd ~/Bootstrap
 ```
-
-This installs Xcode CLT → Homebrew → Ansible → Galaxy dependencies.
 
 ### 3. Customise variables
 
@@ -93,9 +90,10 @@ ansible-playbook playbook.yml --check --diff --ask-become-pass --ask-vault-pass
 ## Project Structure
 
 ```
-mac-server-ansible/
+Bootstrap/
 ├── ansible.cfg              # Ansible configuration
 ├── bootstrap.sh             # One-time setup script
+├── install.sh               # Remote installer script
 ├── playbook.yml             # Main playbook
 ├── requirements.yml         # Galaxy collections & roles
 ├── inventory/
@@ -114,6 +112,9 @@ mac-server-ansible/
     ├── build_server/        # Forgejo CI runner
     ├── ai_research/         # Ollama LLM server
     ├── imessage_relay/      # BlueBubbles
+    ├── forgejo/             # Forgejo Git Server (Docker Compose)
+    ├── immich/              # Immich Photos Stack (Docker Compose)
+    ├── jellyfin/            # Jellyfin Media Server (Homebrew Cask)
     ├── observability/       # Prometheus + Grafana
     └── services/            # nginx, LaunchDaemon management
 ```
@@ -152,11 +153,20 @@ Installs Ollama, starts the server, and pulls the models listed in `ollama_defau
 ### `imessage_relay`
 Installs BlueBubbles server for iMessage bridging. Requires manual Firebase credential setup after the initial run.
 
+### `forgejo`
+Installs Forgejo Git Server via Docker Compose on port `3002`, utilizing SQLite for database simplicity.
+
+### `immich`
+Installs the Immich Photos stack via Docker Compose on port `2283` with a custom storage path pointing to your NAS.
+
+### `jellyfin`
+Installs native Jellyfin Server via Homebrew Cask, registering a LaunchAgent for background startup and native M1 hardware transcoding support.
+
 ### `observability`
 Installs and configures Prometheus, Node Exporter, and Grafana with LaunchAgents. Sets up scrape targets and a default Grafana datasource.
 
 ### `services`
-Installs and configures nginx as a reverse proxy for local services (Grafana, Ollama, BlueBubbles, etc.). Manages LaunchDaemon lifecycle.
+Installs and configures nginx as a reverse proxy for local services (Grafana, Ollama, BlueBubbles, Forgejo, Immich, Jellyfin, etc.). Manages LaunchDaemon lifecycle.
 
 ---
 
@@ -179,6 +189,10 @@ All variables live in `group_vars/all.yml`. Here's what to change for common sce
 | `cloudflared_tunnel_name` | `m1max` | Name registered in Cloudflare dashboard |
 | `ollama_default_models` | *(see all.yml)* | Models pulled on first run |
 | `grafana_port` | `3000` | Grafana web UI port |
+| `forgejo_port` | `3002` | Forgejo web UI port |
+| `immich_port` | `2283` | Immich web UI port |
+| `immich_upload_location` | `"/Volumes/Immich"` | Path to your mounted NAS photos share |
+| `jellyfin_port` | `8096` | Jellyfin web UI port |
 | `nginx_enabled` | `true` | Master switch for the reverse proxy |
 
 ### Secrets (Ansible Vault)

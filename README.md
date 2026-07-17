@@ -346,6 +346,41 @@ To resolve this:
    docker-compose -f ~/.forgejo/docker-compose.yml restart
    ```
 
+### Forgejo: Backup and Restore / Reinstallation
+
+If you need to reinstall Forgejo locally and restore it from your NAS database backup, follow these steps:
+
+1. **Clean up/Remove local installation (optional):**
+   ```bash
+   docker-compose -f ~/.forgejo/docker-compose.yml down -v
+   rm -rf ~/.forgejo
+   ```
+2. **Re-run the playbook (requires vault password for secrets):**
+   ```bash
+   ansible-playbook playbook.yml --tags forgejo --ask-vault-pass
+   ```
+3. **Stop the newly generated container:**
+   ```bash
+   docker-compose -f ~/.forgejo/docker-compose.yml down
+   ```
+4. **Restore the database from your NAS backup:**
+   ```bash
+   cp /Volumes/Forgejo/gitea.db.bak ~/.forgejo/db/gitea.db
+   ```
+5. **Fix the restored database file permissions:**
+   ```bash
+   chmod 666 ~/.forgejo/db/gitea.db
+   ```
+6. **Start Forgejo again:**
+   ```bash
+   docker-compose -f ~/.forgejo/docker-compose.yml up -d
+   ```
+
+You can trigger a manual backup to the NAS at any time by running:
+```bash
+~/.forgejo/backup.sh
+```
+
 ### Re-running is safe
 
 All tasks are idempotent. Re-running the playbook will only change what has drifted from the desired state. Use `--check --diff` to preview changes before applying.

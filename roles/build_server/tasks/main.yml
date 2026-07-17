@@ -121,6 +121,11 @@
               <string>/opt/homebrew/bin/colima</string>
               <string>start</string>
           </array>
+          <key>EnvironmentVariables</key>
+          <dict>
+              <key>PATH</key>
+              <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+          </dict>
           <key>RunAtLoad</key>
           <true/>
           <key>KeepAlive</key>
@@ -134,6 +139,16 @@
           <string>{{ ansible_facts.env.HOME }}/Library/Logs/colima.error.log</string>
       </dict>
       </plist>
+  register: colima_plist
+  tags:
+    - build_server
+
+- name: Unload Colima LaunchAgent before reload (if changed)
+  ansible.builtin.command:
+    cmd: launchctl unload {{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.colima.plist
+  when: colima_plist.changed
+  changed_when: true
+  failed_when: false
   tags:
     - build_server
 
@@ -141,8 +156,11 @@
   ansible.builtin.command:
     cmd: launchctl load {{ ansible_facts.env.HOME }}/Library/LaunchAgents/com.colima.plist
   register: colima_launchctl
-  changed_when: colima_launchctl.rc == 0
-  failed_when: false
+  changed_when: colima_plist.changed
+  failed_when:
+    - colima_launchctl.rc != 0
+    - "'already loaded' not in (colima_launchctl.stderr | default(''))"
+    - "'service already loaded' not in (colima_launchctl.stderr | default(''))"
   tags:
     - build_server
 

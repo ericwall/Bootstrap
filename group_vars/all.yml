@@ -108,7 +108,7 @@ forgejo_port: 3002
 # ─────────────────────────────────────────────────────────────────────────────
 immich_port: 2283
 immich_db_password: postgres
-immich_upload_location: "{{ ansible_env.HOME }}/.immich/library"
+immich_upload_location: "/Volumes/Immich"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Jellyfin Server
